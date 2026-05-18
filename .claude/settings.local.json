@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(ai:building-pydantic-ai-agents)",
+      "Bash(uv --version)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" https://pypi.org/pypi/pydantic-ai-harness/json)",
+      "Bash(curl -s https://pypi.org/pypi/pydantic-ai/json)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d['info']['version']\\)\")",
+      "Bash(curl -s https://pypi.org/pypi/pydantic-ai-harness/json)",
+      "Bash(python3 -c ' *)",
+      "Bash(uv sync *)",
+      "Bash(uv run *)",
+      "Bash(XAI_API_KEY=x uv run *)"
+    ]
+  }
+}
