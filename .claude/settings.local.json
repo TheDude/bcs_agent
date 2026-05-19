@@ -13,7 +13,8 @@
       "Bash(XAI_API_KEY=x uv run *)",
       "Bash(python -c \"import pydantic_ai; print\\(pydantic_ai.__version__\\)\")",
       "Bash(python -c \"from pydantic_ai.toolsets import AbstractToolset, FunctionToolset, PrefixedToolset, CombinedToolset; from pydantic_ai.ext.langchain import LangChainToolset; print\\('toolset imports OK'\\); from pydantic_ai import Agent; import inspect; print\\('Agent.toolsets param:', 'toolsets' in inspect.signature\\(Agent.__init__\\).parameters\\)\")",
-      "Bash(python -c \"from pydantic_ai.toolsets import AbstractToolset, FunctionToolset, PrefixedToolset, CombinedToolset; from pydantic_ai.ext.langchain import LangChainToolset; from pydantic_ai.ext.aci import ACIToolset; print\\('toolset + ext imports OK'\\); from pydantic_ai import Agent; import inspect; print\\('Agent has toolsets param:', 'toolsets' in inspect.signature\\(Agent.__init__\\).parameters\\)\")"
+      "Bash(python -c \"from pydantic_ai.toolsets import AbstractToolset, FunctionToolset, PrefixedToolset, CombinedToolset; from pydantic_ai.ext.langchain import LangChainToolset; from pydantic_ai.ext.aci import ACIToolset; print\\('toolset + ext imports OK'\\); from pydantic_ai import Agent; import inspect; print\\('Agent has toolsets param:', 'toolsets' in inspect.signature\\(Agent.__init__\\).parameters\\)\")",
+      "Bash(uv pip *)"
     ]
   }
 }

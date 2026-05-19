@@ -21,13 +21,9 @@ DEFAULT_INSTRUCTIONS = (
     "Use the running conversation as context and answer clearly and concisely."
 )
 
-#: Default directory scanned for tool plugins, relative to the working dir.
-DEFAULT_TOOLS_DIR = "tools"
-
 #: Environment variables that override the defaults.
 MODEL_ENV_VAR = "BCS_AGENT_MODEL"
 INSTRUCTIONS_ENV_VAR = "BCS_AGENT_INSTRUCTIONS"
-TOOLS_DIR_ENV_VAR = "BCS_AGENT_TOOLS_DIR"
 
 
 @dataclass(slots=True)
@@ -37,12 +33,10 @@ class Config:
     Attributes:
         model: A Pydantic AI ``"provider:model-name"`` string.
         instructions: System-level guidance applied to every turn.
-        tools_dir: Directory scanned for tool plugins (see :mod:`bcs_agent.plugins`).
     """
 
     model: str = DEFAULT_MODEL
     instructions: str = DEFAULT_INSTRUCTIONS
-    tools_dir: str = DEFAULT_TOOLS_DIR
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -50,5 +44,4 @@ class Config:
         return cls(
             model=os.getenv(MODEL_ENV_VAR, DEFAULT_MODEL),
             instructions=os.getenv(INSTRUCTIONS_ENV_VAR, DEFAULT_INSTRUCTIONS),
-            tools_dir=os.getenv(TOOLS_DIR_ENV_VAR, DEFAULT_TOOLS_DIR),
         )

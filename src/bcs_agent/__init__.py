@@ -2,12 +2,12 @@
 
 The public surface is intentionally small:
 
-- ``Config``            -- how the harness is configured (model, instructions, tools).
+- ``Config``            -- how the harness is configured (model, instructions).
 - ``build_agent``       -- construct a Pydantic AI ``Agent`` from a ``Config``.
 - ``Session``           -- a multi-turn conversation that accumulates context.
 - ``run_repl``          -- an interactive terminal chat loop.
-- ``discover_toolsets`` -- discover tool plugins from the ``tools/`` directory.
-- ``PluginError``       -- raised when a plugin is present but cannot be loaded.
+- ``discover_toolsets`` -- discover tool plugins from installed packages.
+- ``PluginError``       -- raised when a plugin is installed but cannot be loaded.
 """
 
 from bcs_agent.agent import build_agent

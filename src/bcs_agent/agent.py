@@ -2,8 +2,8 @@
 
 This is deliberately the only place that knows how to turn a :class:`Config`
 into an ``Agent``. Tools reach the agent as plugins: :func:`build_agent`
-discovers them from the configured ``tools/`` directory (see
-:mod:`bcs_agent.plugins`) and attaches them as Pydantic AI toolsets.
+discovers every installed plugin package (see :mod:`bcs_agent.plugins`) and
+attaches them as Pydantic AI toolsets.
 """
 
 from __future__ import annotations
@@ -27,11 +27,11 @@ def build_agent(
     Args:
         config: Harness configuration. Defaults to :class:`Config` defaults.
         extra_toolsets: Toolsets to attach in addition to the discovered
-            plugins. Lets library users and tests inject tools without files.
+            plugins. Lets library users and tests inject tools directly.
 
     Returns:
-        A Pydantic AI ``Agent`` that returns plain text, with every discovered
-        plugin toolset attached.
+        A Pydantic AI ``Agent`` that returns plain text, with every installed
+        plugin's toolset attached.
     """
     config = config or Config()
     toolsets: list[AbstractToolset] = discover_toolsets(config)

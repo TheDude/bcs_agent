@@ -12,8 +12,8 @@ Four small pieces, one job each:
 
 | Module | Responsibility |
 |--------|----------------|
-| `config.py`  | What model, instructions, and tools directory to use (`Config`, env overrides). |
-| `plugins.py` | Discover tool plugins from the `tools/` directory (`discover_toolsets`). |
+| `config.py`  | What model and instructions to use (`Config`, env overrides). |
+| `plugins.py` | Discover installed tool plugins (`discover_toolsets`). |
 | `agent.py`   | Turn a `Config` into a Pydantic AI `Agent` with its plugins attached (`build_agent`). |
 | `session.py` | A multi-turn `Session` that accumulates message history. |
 | `cli.py`     | The interactive `run_repl` chat loop. |
@@ -62,9 +62,8 @@ print(session.send("What's my name?"))   # remembers "Sam" from the prior turn
 
 | Variable | Effect | Default |
 |----------|--------|---------|
-| `BCS_AGENT_MODEL`        | Model string `provider:model-name`.   | `xai:grok-4-1-fast-reasoning` |
-| `BCS_AGENT_INSTRUCTIONS` | System instructions for the agent.    | a concise-assistant prompt |
-| `BCS_AGENT_TOOLS_DIR`    | Directory scanned for tool plugins.   | `tools` |
+| `BCS_AGENT_MODEL`        | Model string `provider:model-name`. | `xai:grok-4-1-fast-reasoning` |
+| `BCS_AGENT_INSTRUCTIONS` | System instructions for the agent.  | a concise-assistant prompt |
 
 ```bash
 BCS_AGENT_MODEL=anthropic:claude-sonnet-4-6 uv run bcs-agent
@@ -72,16 +71,21 @@ BCS_AGENT_MODEL=anthropic:claude-sonnet-4-6 uv run bcs-agent
 
 ## Plugins
 
-Tools are added as **plugins** — files or directories dropped into the `tools/`
-folder. Every plugin present is discovered and wired into the agent at startup;
-**presence is the entitlement**, so a deployment exposes exactly the
-integrations that are there.
+Tools are added as **plugins**: each plugin is an installable Python package
+that declares an entry point in the `bcs_agent.plugins` group. The harness
+discovers every installed plugin from package metadata at startup — there is no
+directory to scan and nothing to configure. A deployment exposes exactly the
+plugin packages installed in its environment.
 
-A plugin is either `tools/<name>.py` or a package `tools/<name>/` (the latter is
-what a git submodule looks like). It defines a `get_toolset` factory returning a
-Pydantic AI [toolset](https://ai.pydantic.dev/toolsets/):
+### Writing a plugin
+
+A minimal plugin package is two files. The code module defines a `get_toolset`
+factory returning a Pydantic AI [toolset](https://ai.pydantic.dev/toolsets/):
 
 ```python
+# bcs_plugin_clock.py
+from datetime import datetime, timezone
+
 from pydantic_ai import FunctionToolset
 
 toolset = FunctionToolset()
@@ -89,58 +93,83 @@ toolset = FunctionToolset()
 @toolset.tool_plain
 def current_time() -> str:
     """Return the current UTC time in ISO-8601 format."""
-    from datetime import datetime, timezone
     return datetime.now(timezone.utc).isoformat()
 
 def get_toolset() -> FunctionToolset:   # add a `config` parameter to receive Config
     return toolset
 ```
 
-Two reference plugins live in [`examples/tools/`](examples/tools/):
+and the `pyproject.toml` declares the package plus the entry point that makes it
+discoverable:
 
-- [`clock.py`](examples/tools/clock.py) — the minimal plugin (one no-arg tool).
-- [`world_clock.py`](examples/tools/world_clock.py) — a tool that takes a
-  location argument and uses `ModelRetry` to have the model correct a bad one.
+```toml
+[project]
+name = "bcs-plugin-clock"
+version = "0.1.0"
+dependencies = ["pydantic-ai-slim"]
 
-```bash
-BCS_AGENT_TOOLS_DIR=examples/tools uv run bcs-agent
+[project.entry-points."bcs_agent.plugins"]
+clock = "bcs_plugin_clock:get_toolset"   # name = clock; value = module:callable
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 ```
 
-Key properties:
+Install it into the harness environment — from a path, or straight from Git:
 
-- **Tool names are namespaced** by plugin (`current_time` in plugin `clock` is
-  exposed to the model as `clock_current_time`), so plugins never collide.
-- **Dependencies partition per plugin.** Because `get_toolset()` is a factory, a
-  plugin lazy-imports its own SDK *inside* the function — the harness core never
-  depends on any integration's packages, only the plugins present do.
-- **Fail fast.** A plugin that is present but cannot load (bad import, missing
-  SDK, no `get_toolset`) raises `PluginError` at startup — a paid-for
-  integration is never silently missing.
+```bash
+uv pip install -e ./bcs-plugin-clock
+uv pip install "git+https://github.com/your-org/bcs-plugin-clock@v0.1.0"
+```
+
+Two complete reference packages live in [`examples/plugins/`](examples/plugins/):
+[`clock`](examples/plugins/clock/) (the minimal plugin) and
+[`world_clock`](examples/plugins/world_clock/) (a tool that takes a parameter
+and uses `ModelRetry` to have the model correct a bad argument). Each has a
+README with install-and-try instructions.
+
+### Key properties
+
+- **Tool names are namespaced** by plugin (the entry-point name): `current_time`
+  in plugin `clock` is exposed to the model as `clock_current_time`, so plugins
+  never collide.
+- **Dependencies partition per plugin.** Each plugin package declares its own
+  `dependencies`; the installer resolves them automatically and a lockfile pins
+  the whole tree. The harness core depends on no integration's SDK.
+- **Fail fast.** A plugin that is installed but cannot load (bad import, missing
+  dependency, a `get_toolset` that errors) raises `PluginError` at startup — a
+  paid-for integration is never silently missing.
 
 ### External tool sources
 
-Any Pydantic AI `AbstractToolset` works as a plugin's return value, including
-external sources — a plugin can `return` an `ACIToolset` (`pydantic_ai.ext.aci`)
-or `LangChainToolset` (`pydantic_ai.ext.langchain`), or an MCP server. For
-example, a future Google Workspace plugin:
+A plugin's `get_toolset()` can return *any* Pydantic AI `AbstractToolset`,
+including external sources — an `ACIToolset` (`pydantic_ai.ext.aci`), a
+`LangChainToolset` (`pydantic_ai.ext.langchain`), or an MCP server. A Google
+Workspace plugin, for example:
 
 ```python
-# tools/google_workspace/__init__.py  (a git submodule)
-def get_toolset(config):
-    from pydantic_ai.ext.aci import ACIToolset   # lazy: only this plugin needs aci-sdk
-    import os
+# bcs_plugin_google_workspace.py
+import os
+
+def get_toolset():
+    from pydantic_ai.ext.aci import ACIToolset
     return ACIToolset(
         ["GOOGLE__GMAIL_SEND", "GOOGLE__CALENDAR_LIST_EVENTS"],
         linked_account_owner_id=os.environ["ACI_LINKED_ACCOUNT_OWNER_ID"],
     )
 ```
 
+with `aci-sdk` in that package's `dependencies` — pulled in only for deployments
+that install this plugin.
+
 ### DevOps: per-customer products
 
-This harness is deployed per customer, with customers paying per integration.
-Model each plugin as its own git repository and add it as a **submodule** under
-`tools/`, on a branch per customer. Checking out a customer's branch yields
-exactly their entitled plugin set — no separate allowlist to keep in sync.
+The harness is deployed per customer, and customers pay per integration. Each
+plugin is its own package/repository. A customer's product is a committed,
+reviewable lock/requirements file listing the plugin packages they bought;
+`uv sync` reproduces that exact environment — plugin versions plus their full
+resolved dependency trees, pinned with hashes.
 
 ## Tests
 

@@ -1,14 +1,10 @@
-"""Example tool plugin: a clock.
+"""Example bcs-agent plugin: a clock.
 
-This is a reference for the plugin convention. A plugin is a ``.py`` file (or a
-package directory) dropped into the harness's ``tools/`` folder. It defines a
-``get_toolset()`` factory returning a Pydantic AI toolset.
+This module is the code half of an installable plugin *package*. The
+``pyproject.toml`` next to it declares the ``bcs_agent.plugins`` entry point
+that makes ``get_toolset`` discoverable once the package is installed.
 
-Try it::
-
-    BCS_AGENT_TOOLS_DIR=examples/tools uv run bcs-agent
-
-then ask the agent for the current time.
+It is the minimal plugin: one no-argument tool.
 """
 
 from __future__ import annotations

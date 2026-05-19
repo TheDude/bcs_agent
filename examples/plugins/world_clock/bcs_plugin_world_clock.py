@@ -1,17 +1,14 @@
-"""Example tool plugin: a world clock.
+"""Example bcs-agent plugin: a world clock.
 
-A richer companion to ``clock.py``. Where ``clock.py`` is the minimal plugin,
-this one shows a tool that:
+A richer companion to the ``clock`` plugin. Where ``clock`` is the minimal
+plugin, this one shows a tool that:
 
 - takes a **parameter** (a location), and
 - uses ``ModelRetry`` -- the idiomatic Pydantic AI way to hand the model a
   correctable error -- when that parameter is not a valid time zone.
 
-Try it::
-
-    BCS_AGENT_TOOLS_DIR=examples/tools uv run bcs-agent
-
-then ask e.g. "what's the date and time in Tokyo?".
+It uses only the standard library (``zoneinfo``); a plugin that needs a
+third-party SDK would declare it in this package's ``pyproject.toml``.
 """
 
 from __future__ import annotations
