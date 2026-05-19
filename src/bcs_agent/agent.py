@@ -1,30 +1,44 @@
 """Construction of the Pydantic AI :class:`~pydantic_ai.Agent`.
 
 This is deliberately the only place that knows how to turn a :class:`Config`
-into an ``Agent``. Future integrations (tools, capabilities) should be wired in
-here so the rest of the harness stays unchanged.
+into an ``Agent``. Tools reach the agent as plugins: :func:`build_agent`
+discovers them from the configured ``tools/`` directory (see
+:mod:`bcs_agent.plugins`) and attaches them as Pydantic AI toolsets.
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from pydantic_ai import Agent
+from pydantic_ai.toolsets import AbstractToolset
 
 from bcs_agent.config import Config
+from bcs_agent.plugins import discover_toolsets
 
 
-def build_agent(config: Config | None = None) -> Agent[None, str]:
+def build_agent(
+    config: Config | None = None,
+    *,
+    extra_toolsets: Sequence[AbstractToolset] | None = None,
+) -> Agent[None, str]:
     """Build a conversational agent from ``config``.
 
     Args:
         config: Harness configuration. Defaults to :class:`Config` defaults.
+        extra_toolsets: Toolsets to attach in addition to the discovered
+            plugins. Lets library users and tests inject tools without files.
 
     Returns:
-        A Pydantic AI ``Agent`` that returns plain text.
+        A Pydantic AI ``Agent`` that returns plain text, with every discovered
+        plugin toolset attached.
     """
     config = config or Config()
+    toolsets: list[AbstractToolset] = discover_toolsets(config)
+    if extra_toolsets:
+        toolsets.extend(extra_toolsets)
     return Agent(
         config.model,
         instructions=config.instructions,
-        # Integrations land here later, e.g.:
-        #   tools=[...], capabilities=[...]
+        toolsets=toolsets,
     )
