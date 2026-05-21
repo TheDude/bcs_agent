@@ -8,7 +8,8 @@
             "name": "Python Debugger: Module",
             "type": "debugpy",
             "request": "launch",
-            "module": "bcs_agent.cli"
+            "module": "bcs_agent.cli",
+            "justMyCode": false
         }
     ]
 }
